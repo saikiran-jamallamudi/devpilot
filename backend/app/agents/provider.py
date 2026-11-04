@@ -22,7 +22,7 @@ class DemoProvider:
                 {"title": "Add automated tests", "description": "Cover success, validation and failure paths.", "priority": "high", "depends_on": ["Implement API"]}
             ]}
         if agent == "coding":
-            return {"files": [{"path": "src/example_service.py", "language": "python", "content": "# REVIEW-ONLY DRAFT. Inspect and adapt before use.\\n\\ndef handle_request(payload: dict) -> dict:\\n    if not payload:\\n        raise ValueError('payload is required')\\n    return {'status': 'accepted', 'data': payload}\\n"}], "notes": ["Illustrative code only. DevPilot does not execute generated code."]}
+            return {"files": [{"path": "src/example_service.py", "language": "python", "content": "# REVIEW-ONLY DRAFT. Inspect and adapt before use.\n\ndef handle_request(payload: dict) -> dict:\n    if not payload:\n        raise ValueError('payload is required')\n    return {'status': 'accepted', 'data': payload}\n"}], "notes": ["Illustrative code only. DevPilot does not execute generated code."]}
         if agent == "testing":
             return {"test_cases": [
                 {"name": "valid input", "type": "unit", "expected": "Returns a successful structured response."},

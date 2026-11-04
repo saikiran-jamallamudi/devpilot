@@ -1,0 +1,35 @@
+"use client";
+
+import { FormEvent, useEffect, useState } from "react";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+type Project = { id: number; name: string; description: string };
+type Result = Record<string, unknown>;
+
+export default function Home() {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [active, setActive] = useState<Project | null>(null);
+  const [name, setName] = useState(""); const [description, setDescription] = useState("");
+  const [requirement, setRequirement] = useState(""); const [result, setResult] = useState<Result | null>(null);
+  const [busy, setBusy] = useState(false); const [error, setError] = useState("");
+  async function loadProjects() { try { const r = await fetch(`${API}/api/projects`); if (!r.ok) throw new Error("Could not load projects. Is the API running?"); setProjects(await r.json()); } catch (e) { setError(e instanceof Error ? e.message : "Unexpected error"); } }
+  useEffect(() => { void loadProjects(); }, []);
+  async function createProject(e: FormEvent) { e.preventDefault(); setBusy(true); setError(""); try { const r = await fetch(`${API}/api/projects`, {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,description})}); if (!r.ok) throw new Error("Project creation failed."); const p = await r.json() as Project; setName("");setDescription("");setActive(p);setResult(null);await loadProjects(); } catch(e) {setError(e instanceof Error ? e.message : "Unexpected error");} finally {setBusy(false);} }
+  async function runAgent(agent: string) { if (!active || requirement.trim().length < 15) {setError("Select a project and enter at least 15 characters of requirements.");return;} setBusy(true);setError("");setResult(null); try { const path = agent === "specification" ? `/api/projects/${active.id}/requirements` : `/api/projects/${active.id}/agents/${agent}`; const r = await fetch(`${API}${path}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({content:requirement})});const data = await r.json();if(!r.ok)throw new Error(data.detail || "Agent request failed.");setResult(data.result);} catch(e){setError(e instanceof Error ? e.message : "Unexpected error");} finally{setBusy(false);} }
+  return <main className="shell">
+    <header className="topbar"><a className="brand" href="#"><span className="brand-mark">D</span> DevPilot</a><span className="top-note">AI ENGINEERING WORKSPACE <i className="live-dot"/> DEMO</span></header>
+    <section className="hero"><div className="eyebrow"><span className="spark">✳</span> FROM IDEA TO REVIEWABLE CODE</div><h1>Build software.<br/><span>Think with agents.</span></h1><p className="hero-copy">Turn requirements into specifications, implementation plans, code drafts and test reviews. You stay in control at every step.</p></section>
+    <section className="workspace"><aside className="sidebar"><div className="section-label">WORKSPACES <span>{projects.length}</span></div>
+      <form onSubmit={createProject} className="project-form"><input aria-label="Project name" placeholder="New project name" value={name} onChange={e=>setName(e.target.value)} required minLength={2}/><input aria-label="Project description" placeholder="Short description (optional)" value={description} onChange={e=>setDescription(e.target.value)}/><button className="button secondary full" disabled={busy}>＋ Create project</button></form>
+      <div className="project-list">{projects.map(p=><button key={p.id} className={`project-item ${active?.id===p.id?"selected":""}`} onClick={()=>{setActive(p);setResult(null);}}><span className="project-icon">⌘</span><span><b>{p.name}</b><small>{p.description||"No description"}</small></span></button>)}{projects.length===0&&<p className="muted small">Create a workspace to get started.</p>}</div>
+      <div className="safety-note"><span>◈</span><div><b>Human in the loop</b><p>AI output is a draft. Review before using it. Generated code is never executed by this app.</p></div></div></aside>
+      <section className="main-panel"><div className="panel-heading"><div><div className="section-label">PROJECT WORKFLOW</div><h2>{active?active.name:"Your engineering cockpit"}</h2></div><span className="status-pill"><i className="live-dot"/> {active?"WORKSPACE READY":"AWAITING PROJECT"}</span></div>
+        <div className="requirement-box"><label htmlFor="requirement">01 / DEFINE YOUR REQUIREMENT</label><textarea id="requirement" value={requirement} onChange={e=>setRequirement(e.target.value)} placeholder="Example: Build a REST API for task management with user authentication, CRUD operations, PostgreSQL persistence and input validation." rows={4}/><div className="requirement-footer"><span>{requirement.length} characters · Be specific about behavior and constraints</span><span>↵</span></div></div>
+        <div className="agent-heading"><div><label>02 / CHOOSE AN AGENT</label><p>Run one focused workflow at a time.</p></div><span className="agent-count">05 AGENTS</span></div>
+        <div className="agent-grid"><AgentCard number="01" icon="▤" title="Specification" description="Requirements, acceptance criteria and edge cases." onClick={()=>runAgent("specification")} disabled={!active||busy}/><AgentCard number="02" icon="☷" title="Planning" description="Break the requirement into buildable tasks." onClick={()=>runAgent("planning")} disabled={!active||busy}/><AgentCard number="03" icon="⌘" title="Code generation" description="Create review-only code drafts and file outlines." onClick={()=>runAgent("coding")} disabled={!active||busy}/><AgentCard number="04" icon="⚗" title="Test design" description="Generate unit, integration and E2E test cases." onClick={()=>runAgent("testing")} disabled={!active||busy}/><AgentCard number="05" icon="◇" title="Code review" description="Surface potential bugs, security and quality risks." onClick={()=>runAgent("code_review")} disabled={!active||busy}/></div>
+        {busy&&<div className="loading"><span className="spinner"/> Agent is working on your request…</div>}{error&&<div className="error" role="alert">{error}</div>}
+        {result&&<section className="result-panel"><div className="result-title"><div><label>03 / AGENT OUTPUT</label><h3>Review the generated artifact</h3></div><span className="status-pill success">COMPLETED</span></div><pre>{JSON.stringify(result,null,2)}</pre></section>}
+        <footer className="footnote">DEVPILOT / MVP 0.1 <span>AI OUTPUT IS UNTRUSTED · HUMAN REVIEW REQUIRED</span></footer>
+      </section></section>
+  </main>;
+}
+function AgentCard({number,icon,title,description,onClick,disabled}:{number:string;icon:string;title:string;description:string;onClick:()=>void;disabled:boolean}) {return <button className="agent-card" onClick={onClick} disabled={disabled}><div className="agent-card-top"><span className="agent-icon">{icon}</span><span className="agent-number">{number}</span></div><b>{title}</b><p>{description}</p><span className="run-link">Run agent <span>↗</span></span></button>;}
